@@ -1,0 +1,6 @@
+microsoft sql
+postgresql
+ansible
+django
+python
+stress

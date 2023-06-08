@@ -1,0 +1,168 @@
+from django.shortcuts import render, redirect
+from subprocess import check_output
+from .models import BlacklistedProcess
+from .models import WhitelistedProcess
+from datetime import datetime
+import subprocess
+from django.http import JsonResponse, HttpResponseBadRequest
+from django.contrib import messages
+from .forms import LoginForm
+from django.contrib.auth import authenticate, login
+from django.contrib.auth.forms import AuthenticationForm
+from django.http import HttpResponseRedirect
+from django.http import JsonResponse
+
+
+def login_view(request):
+    if request.method == 'POST':
+        form = AuthenticationForm(request, data=request.POST)
+        if form.is_valid():
+            username = form.cleaned_data.get('username')
+            password = form.cleaned_data.get('password')
+            user = authenticate(request, username=username, password=password)
+            if user is not None:
+                login(request, user)
+                return redirect('home')  # Перенаправление на домашнюю страницу после успешной авторизации
+    else:
+        form = AuthenticationForm()
+    
+    return render(request, 'myapp/login.html', {'form': form})
+
+#def add_to_blacklist(request):
+   # if request.method == 'POST':
+   #     process_name = request.POST.get('blacklisted_process')
+
+        # Запись процесса в текстовый файл черного списка
+   #     with open('blacklist.txt', 'a') as file:
+    #        file.write(process_name + '\n')
+
+   # return redirect('home')
+def add_to_blacklist(request):
+    if request.method == 'POST':
+        process_name = request.POST.get('blacklisted_process', '')
+        if process_name:
+            with open('/root/django/myproject/blacklist.txt', 'r+') as f:
+                blacklist = f.readlines()
+                f.seek(0)
+                f.truncate()
+                blacklist.append(process_name + '\n')
+                f.writelines(blacklist)
+            return redirect('home')
+    return HttpResponseBadRequest()
+
+def add_to_whitelist(request):
+    if request.method == 'POST':
+        process_name = request.POST.get('whitelisted_process', '')
+        if process_name:
+            with open('/root/django/myproject/whitelist.txt', 'r+') as f:
+                whitelist = f.readlines()
+                f.seek(0)
+                f.truncate()
+                whitelist.append(process_name + '\n')
+                f.writelines(whitelist)
+            return redirect('home')
+    return HttpResponseBadRequest()
+ 
+
+
+def home(request):
+    cpu_usage = get_cpu_usage()
+    memory_usage = get_memory_usage()
+    process_list = get_process_list()
+    running_processes = get_running_processes()
+    current_time = datetime.now()
+    with open('blacklist.txt', 'r') as f:
+        blacklist_processes = f.read().splitlines()
+    with open('whitelist.txt', 'r') as f:
+        whitelist_processes = f.read().splitlines()
+    context = {
+        'cpu_usage': cpu_usage,
+        'memory_usage': memory_usage,
+        'process_list': process_list,
+        'running_processes': running_processes,
+        'blacklisted_processes': blacklist_processes,
+        'whitelisted_processes': whitelist_processes,
+        'current_time': current_time,
+    }
+    return render(request, 'myapp/home.html', context)
+
+def close_process(request):
+    if request.method == 'POST':
+        process_name = request.POST.get('process_name')
+
+        # Запуск Ansible playbook для закрытия процесса
+        playbook_command = f'ansible-playbook playbook.yml -e "process_name={process_name}"'
+        subprocess.run(playbook_command, shell=True, check=True)
+
+    return redirect('home')
+
+import psutil
+
+def get_cpu_usage():
+    cpu_percent = psutil.cpu_percent()
+    return cpu_percent
+
+def get_memory_usage():
+    memory_percent = psutil.virtual_memory().percent
+    return memory_percent
+
+def get_process_list():
+    process_list = []
+    for proc in psutil.process_iter(['name']):
+        process_list.append(proc.info['name'])
+    return process_list
+
+def get_running_processes():
+    running_processes = []
+    for proc in psutil.process_iter(['name', 'status']):
+        process_info = proc.as_dict(attrs=['name', 'status'])
+        if process_info['status'] == psutil.STATUS_RUNNING:
+            running_processes.append(process_info['name'])
+    return running_processes
+
+#def get_system_resources():
+#    cpu_usage = psutil.cpu_percent()
+#    memory_usage = psutil.virtual_memory().percent
+#    return cpu_usage, memory_usage
+
+def close_process_with_ansible(process_name):
+    print(f"Closing process: {process_name}")
+    return redirect('home')
+
+def remove_blacklisted_process(request, process_name):
+    with open('blacklist.txt', 'r') as f:
+        blacklist_processes = f.read().splitlines()
+
+    if process_name in blacklist_processes:
+        blacklist_processes.remove(process_name)
+
+        with open('blacklist.txt', 'w') as f:
+           # f.write('\n'.join(blacklist_processes))
+            f.writelines(line + '\n' for line in blacklist_processes)
+    return HttpResponseRedirect('/')
+
+def remove_whitelisted_process(request, process_name):
+    with open('whitelist.txt', 'r') as f:
+        whitelist_processes = f.read().splitlines()
+
+    if process_name in whitelist_processes:
+        whitelist_processes.remove(process_name)
+
+        with open('whitelist.txt', 'w') as f:
+           # f.write('\n'.join(blacklist_processes))
+            f.writelines(line + '\n' for line in whitelist_processes)
+    return HttpResponseRedirect('/')
+
+
+def update_data(request):
+    cpu_usage = get_cpu_usage()
+    memory_usage = get_memory_usage()
+    process_list = get_process_list()
+
+    data = {
+        'cpu_usage': cpu_usage,
+        'memory_usage': memory_usage,
+        'process_list': process_list
+    }
+
+    return JsonResponse(data)

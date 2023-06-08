@@ -1,0 +1,22 @@
+- name: Kill high-resource processes
+  hosts: localhost
+  gather_facts: no
+  become: yes
+  tasks:
+    - name: Get PID of highest CPU process
+      shell: ps -eo pid,%cpu --sort=-%cpu | awk 'NR==2{print $1}'
+      register: high_cpu_process
+      changed_when: false
+
+    - name: Kill highest CPU process
+      shell: kill {{ high_cpu_process.stdout }}
+      when: high_cpu_process.stdout is defined
+
+    - name: Get PID of highest memory process
+      shell: ps -eo pid,%mem --sort=-%mem | awk 'NR==2{print $1}'
+      register: high_memory_process
+      changed_when: false
+
+    - name: Kill highest memory process
+      shell: kill {{ high_memory_process.stdout }}
+      when: high_memory_process.stdout is defined

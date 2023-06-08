@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Process Manager</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+        }
+
+        h1 {
+            color: #333;
+            font-size: 24px;
+            margin-bottom: 20px;
+        }
+
+        h2 {
+            color: #555;
+            font-size: 20px;
+            margin-top: 30px;
+            margin-bottom: 10px;
+        }
+
+        p {
+            margin: 5px 0;
+        }
+
+        table {
+            border-collapse: collapse;
+            width: 100%;
+        }
+
+        th, td {
+            padding: 8px;
+            text-align: left;
+            border-bottom: 1px solid #ddd;
+        }
+
+        th {
+            background-color: #f2f2f2;
+        }
+
+        label {
+            font-weight: bold;
+            display: block;
+            margin-bottom: 5px;
+        }
+
+        input[type="text"] {
+            padding: 5px;
+            width: 200px;
+        }
+
+        input[type="submit"] {
+            padding: 5px 10px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+<head>
+    <title>Process Manager</title>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script>
+        $(document).ready(function() {
+            // Функция для обновления данных системных ресурсов и списка процессов
+            function updateData() {
+                $.ajax({
+                    url: '/update_data/',  // URL для обновления данных (представление update_data)
+                    dataType: 'json',
+                    success: function(data) {
+                        // Обновление системных ресурсов
+                        $('#system-resources').html('CPU Usage: ' + data.cpu_usage + '%, Memory Usage: ' + data.memory_usage + '%');
+
+                        // Обновление списка процессов
+                        var processTableHTML = '<table><tr><th>Process</th></tr>';
+                        for (var i = 0; i < data.process_list.length; i++) {
+                            processTableHTML += '<tr><td>' + data.process_list[i] + '</td></tr>';
+                        }
+                        $('#process-list').html(processTableHTML);
+                    }
+                });
+            }
+
+            // Вызов функции обновления данных через интервал (например, каждые 5 секунд)
+            setInterval(updateData, 5000);
+        });
+    </script>
+</head>
+<body>
+    <h1>Process Manager</h1>
+
+    <h2>System Resources</h2>
+    <div id="system-resources"></div>
+
+    <h2>Process List</h2>
+    <div id="process-list"></div>
+</body>
+<!--
+    <h1>Process Manager</h1>
+
+    <h2>System Resources</h2>
+    <p>CPU Usage: {{ cpu_usage }}%</p>
+    <p>Memory Usage: {{ memory_usage }}%</p>
+
+    <h2>Process List</h2>
+    <table>
+        <tr>
+            <th>Process Name</th>
+        </tr>
+        {% for process in process_list %}
+            <tr>
+                <td>{{ process }}</td>
+            </tr>
+        {% endfor %}
+    </table>
+-->
+    <h2>Whitelisted Processes</h2>
+    <table>
+  <thead>
+    <tr>
+      <th>Process</th>
+      <th>Actions</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for process in whitelisted_processes %}
+      <tr>
+        <td>{{ process }}</td>
+        <td>
+          <form action="{% url 'remove_whitelisted_process' process %}" method="post" style="display: inline;">
+            {% csrf_token %}
+            <input type="submit" value="Remove">
+          </form>
+        </td>
+      </tr>
+    {% endfor %}
+  </tbody>
+</table>
+    <h2>Add Process to Whitelist</h2>
+    <form action="{% url 'add_to_whitelist' %}" method="post">
+        {% csrf_token %}
+        <label for="whitelisted_process">Process Name:</label>
+        <input type="text" name="whitelisted_process" id="whitelisted_process">
+        <br>
+        <input type="submit" value="Add to Whitelist">
+    </form>
+
+    <h2>Blacklisted Processes</h2>
+<table>
+  <thead>
+    <tr>
+      <th>Process</th>
+      <th>Actions</th>  
+    </tr>
+  </thead>
+  <tbody>
+    {% for process in blacklisted_processes %}
+      <tr>
+        <td>{{ process }}</td>
+        <td>
+          <form action="{% url 'remove_blacklisted_process' process %}" method="post" style="display: inline;">
+            {% csrf_token %}
+            <input type="submit" value="Remove">
+          </form>
+        </td>
+      </tr>
+    {% endfor %}
+  </tbody>
+</table>
+    <h2>Add Process to Blacklist</h2>
+    <form action="{% url 'add_to_blacklist' %}" method="post">
+        {% csrf_token %}
+        <label for="blacklisted_process">Process Name:</label>
+        <input type="text" name="blacklisted_process" id="blacklisted_process">
+        <br>
+        <input type="submit" value="Add to Blacklist">
+    </form>
+
+    <h2>Current Time</h2>
+    <p>{{ current_time }}</p>
+
+    <h2>Close Process</h2>
+    <form action="{% url 'close_process' %}" method="post">
+        {% csrf_token %}
+        <label for="process_name">Process Name:</label>
+        <input type="text" name="process_name" id="process_name">
+        <br>
+        <input type="submit" value="Close Process">
+    </form>
+</body>
+</html>

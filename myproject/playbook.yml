@@ -1,0 +1,7 @@
+- name: Close Process
+  hosts: localhost
+  gather_facts: no
+  become: yes
+  tasks:
+    - name: Close processes
+      command: killall -9 {{ process_name }}
